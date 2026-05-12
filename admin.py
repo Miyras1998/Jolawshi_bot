@@ -34,12 +34,12 @@ async def admin_stats(message: Message):
     stats = await get_stats()
     await message.answer(
         f"📊 <b>Bot statistikasi</b>\n\n"
-        f"👥 Jami foydalanuvchilar: <b>{stats['total_users']}</b>\n"
-        f"🚖 Haydovchilar: <b>{stats['total_drivers']}</b>\n"
-        f"🔍 Yo'lovchilar: <b>{stats['total_users'] - stats['total_drivers']}</b>\n\n"
-        f"🚗 Jami safarlar: <b>{stats['total_rides']}</b>\n"
-        f"🟢 Faol safarlar: <b>{stats['active_rides']}</b>\n"
-        f"📋 Jami bronlar: <b>{stats['total_bookings']}</b>",
+        f"👥 Жәми пайдаланыўшылар: <b>{stats['total_users']}</b>\n"
+        f"🚖 Такси айдаўшылар: <b>{stats['total_drivers']}</b>\n"
+        f"🔍 Жолаўшылар: <b>{stats['total_users'] - stats['total_drivers']}</b>\n\n"
+        f"🚗 Жәми сапарлар: <b>{stats['total_rides']}</b>\n"
+        f"🟢 Актив сапарлар: <b>{stats['active_rides']}</b>\n"
+        f"📋 Жәми броньлаўлар: <b>{stats['total_bookings']}</b>",
         parse_mode="HTML"
     )
 
@@ -49,11 +49,11 @@ async def admin_settings(message: Message):
     s = await get_all_settings()
     text = (
         f"⚙️ <b>Sozlamalar</b>\n\n"
-        f"🕐 Ochilish: <b>{s.get('rides_open_hour','6'):>02}:{s.get('rides_open_minute','0'):>02}</b>\n"
-        f"🔒 Yopilish: <b>{s.get('rides_close_hour','22'):>02}:{s.get('rides_close_minute','0'):>02}</b>\n"
-        f"⏳ E'lon muddati: <b>{s.get('ride_expire_hours','24')} soat</b>\n"
-        f"📢 Kanal: <b>{s.get('channel_id','—')}</b>\n"
-        f"🤖 Bot holati: <b>{'🟢 Faol' if s.get('bot_active','1')=='1' else '🔴 To`xtatilgan'}</b>"
+        f"🕐 Ашылыў: <b>{s.get('rides_open_hour','6'):>02}:{s.get('rides_open_minute','0'):>02}</b>\n"
+        f"🔒 Жабылыў: <b>{s.get('rides_close_hour','22'):>02}:{s.get('rides_close_minute','0'):>02}</b>\n"
+        f"⏳ Дағаза мүддети: <b>{s.get('ride_expire_hours','24')} soat</b>\n"
+        f"📢 Канал: <b>{s.get('channel_id','—')}</b>\n"
+        f"🤖 Бот жағдайы: <b>{'🟢 Актив' if s.get('bot_active','1')=='1' else '🔴 Тоқтатылған'}</b>"
     )
     await message.answer(text, parse_mode="HTML", reply_markup=admin_settings_kb())
 
@@ -61,32 +61,32 @@ async def admin_settings(message: Message):
 @router.callback_query(F.data.startswith("admin_set:"))
 async def admin_set_cb(call: CallbackQuery, state: FSMContext):
     if call.from_user.id not in ADMIN_IDS:
-        await call.answer("❌ Ruxsat yo'q!")
+        await call.answer("❌ Рухсат жоқ!")
         return
     action = call.data.split(":")[1]
 
     if action == "open_time":
-        await call.message.answer("🕐 Ochilish vaqtini kiriting (Masalan: 06:00):", reply_markup=cancel_kb())
+        await call.message.answer("🕐 Ашылыў ўақтын киргизиң (Masalan: 06:00):", reply_markup=cancel_kb())
         await state.set_state(AdminStates.set_open_time)
     elif action == "close_time":
-        await call.message.answer("🔒 Yopilish vaqtini kiriting (Masalan: 22:00):", reply_markup=cancel_kb())
+        await call.message.answer("🔒 Жабылыў ўақтын киргизиң (Masalan: 22:00):", reply_markup=cancel_kb())
         await state.set_state(AdminStates.set_close_time)
     elif action == "expire_hours":
-        await call.message.answer("⏳ E'lon necha soatdan keyin o'chsin? (Masalan: 24):", reply_markup=cancel_kb())
+        await call.message.answer("⏳ Хабарландырыў неше сааттан кейин өшсин? (Masalan: 24):", reply_markup=cancel_kb())
         await state.set_state(AdminStates.set_expire)
     elif action == "channel_id":
-        await call.message.answer("📢 Kanal username kiriting (Masalan: @mening_kanalim):", reply_markup=cancel_kb())
+        await call.message.answer("📢 Канал username киргизиң (Masalan: @mening_kanalim):", reply_markup=cancel_kb())
         await state.set_state(AdminStates.set_channel)
     elif action == "bot_stop":
         await set_setting("bot_active", "0")
-        await call.message.answer("🔴 Bot to'xtatildi!")
+        await call.message.answer("🔴 Бот тоқтатылды!")
     elif action == "bot_start":
         await set_setting("bot_active", "1")
-        await call.message.answer("🟢 Bot ishga tushirildi!")
+        await call.message.answer("🟢 Бот иске түсирилди!")
     await call.answer()
 
 
-@router.message(AdminStates.set_open_time, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.set_open_time, F.text != "❌ Бийкарлаў")
 async def set_open_time(message: Message, state: FSMContext):
     try:
         parts = message.text.strip().split(":")
