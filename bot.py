@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN
+from config import 8615206121:AAGsrIm9r0RgR0CTDMg0Na-VPXqQlJ16Tgs
 from database import init_db
 import common
 import admin
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def main():
     await init_db()
 
-    bot = Bot(token=BOT_TOKEN)
+    bot = Bot(token=8615206121:AAGsrIm9r0RgR0CTDMg0Na-VPXqQlJ16Tgs)
     dp = Dispatcher(storage=MemoryStorage())
 
     # Routers
