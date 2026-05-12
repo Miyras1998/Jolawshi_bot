@@ -95,12 +95,12 @@ async def set_open_time(message: Message, state: FSMContext):
         await set_setting("rides_open_hour", str(h))
         await set_setting("rides_open_minute", str(m))
         await state.clear()
-        await message.answer(f"✅ Ochilish vaqti: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
+        await message.answer(f"✅ Ашылыў ўақты: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ Noto'g'ri format! Masalan: 06:00")
+        await message.answer("❌ Надурис формат! Мәселен: 06:00")
 
 
-@router.message(AdminStates.set_close_time, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.set_close_time, F.text != "❌ Бийкарлаў")
 async def set_close_time(message: Message, state: FSMContext):
     try:
         parts = message.text.strip().split(":")
@@ -109,40 +109,40 @@ async def set_close_time(message: Message, state: FSMContext):
         await set_setting("rides_close_hour", str(h))
         await set_setting("rides_close_minute", str(m))
         await state.clear()
-        await message.answer(f"✅ Yopilish vaqti: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
+        await message.answer(f"✅ Жабылыў ўақты: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ Noto'g'ri format! Masalan: 22:00")
+        await message.answer("❌ Надурис формат! Мәселен: 22:00")
 
 
-@router.message(AdminStates.set_expire, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.set_expire, F.text != "❌ Бийкарлаў")
 async def set_expire(message: Message, state: FSMContext):
     try:
         h = int(message.text.strip())
         assert 1 <= h <= 168
         await set_setting("ride_expire_hours", str(h))
         await state.clear()
-        await message.answer(f"✅ E'lon muddati: <b>{h} soat</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
+        await message.answer(f"✅ Дағаза мүддети: <b>{h} soat</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ 1-168 orasida raqam kiriting!")
+        await message.answer("❌ 1-168 арасына сан киргизиң!")
 
 
-@router.message(AdminStates.set_channel, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.set_channel, F.text != "❌ Бийкарлаў")
 async def set_channel(message: Message, state: FSMContext):
     channel = message.text.strip()
     await set_setting("channel_id", channel)
     await state.clear()
-    await message.answer(f"✅ Kanal: <b>{channel}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
+    await message.answer(f"✅ Канал: <b>{channel}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
 
 
 # ─── USERS ───────────────────────────────────────────────────────────────────
 
-@router.message(IsAdmin(), F.text == "👥 Foydalanuvchilar")
+@router.message(IsAdmin(), F.text == "👥 Пайдаланыўшылар")
 async def admin_users(message: Message):
     users = await get_all_users()
-    await message.answer(f"👥 <b>Foydalanuvchilar</b> ({len(users)} ta):", parse_mode="HTML")
+    await message.answer(f"👥 <b>Пайдаланыўшылар</b> ({len(users)} ta):", parse_mode="HTML")
     for u in users[:20]:
         blocked = "🚫" if u["is_blocked"] else "✅"
-        role_map = {"passenger": "Yo'lovchi", "driver": "Haydovchi", "both": "Ikkalasi"}
+        role_map = {"passenger": "Жолаўшы", "driver": "Такси айдаўшы", "both": "Екеўи де"}
         text = (
             f"{blocked} <b>{u['full_name']}</b>\n"
             f"📱 {u['phone'] or '—'}\n"
@@ -158,7 +158,7 @@ async def block_user_cb(call: CallbackQuery):
     user_id = int(call.data.split(":")[1])
     await block_user(user_id, 1)
     await call.message.edit_reply_markup(reply_markup=user_actions_kb(user_id, 1))
-    await call.answer("🚫 Bloklandi!")
+    await call.answer("🚫 Блокланды!")
 
 
 @router.callback_query(F.data.startswith("unblock:"))
@@ -168,7 +168,7 @@ async def unblock_user_cb(call: CallbackQuery):
     user_id = int(call.data.split(":")[1])
     await block_user(user_id, 0)
     await call.message.edit_reply_markup(reply_markup=user_actions_kb(user_id, 0))
-    await call.answer("✅ Blokdan chiqarildi!")
+    await call.answer("✅ Блоктан шығарылды!")
 
 
 @router.callback_query(F.data.startswith("msg_user:"))
@@ -177,31 +177,31 @@ async def msg_user_start(call: CallbackQuery, state: FSMContext):
         return
     user_id = int(call.data.split(":")[1])
     await state.update_data(target_user_id=user_id)
-    await call.message.answer("✉️ Yubormoqchi bo'lgan xabaringizni kiriting:", reply_markup=cancel_kb())
+    await call.message.answer("✉️ Жибермекши болған хабарыңызды киргизиң:", reply_markup=cancel_kb())
     await state.set_state(AdminStates.msg_user)
     await call.answer()
 
 
-@router.message(AdminStates.msg_user, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.msg_user, F.text != "❌ Бийкарлаў")
 async def msg_user_send(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     try:
-        await bot.send_message(data["target_user_id"], f"📨 <b>Admin xabari:</b>\n\n{message.text}", parse_mode="HTML")
+        await bot.send_message(data["target_user_id"], f"📨 <b>Админ хабары:</b>\n\n{message.text}", parse_mode="HTML")
         await message.answer("✅ Xabar yuborildi!", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ Xabar yuborib bo'lmadi!", reply_markup=admin_menu_kb())
+        await message.answer("❌ Хабар жиберип болмайды!", reply_markup=admin_menu_kb())
     await state.clear()
 
 
 # ─── ALL RIDES ───────────────────────────────────────────────────────────────
 
-@router.message(IsAdmin(), F.text == "🚗 Barcha safarlar")
+@router.message(IsAdmin(), F.text == "🚗 Барлық сапарлар")
 async def admin_all_rides(message: Message):
     rides = await get_all_rides_admin()
     if not rides:
-        await message.answer("🚗 Hali safarlar yo'q.")
+        await message.answer("🚗 Еле сапарлар жоқ.")
         return
-    await message.answer(f"🚗 <b>Barcha safarlar</b> ({len(rides)} ta):", parse_mode="HTML")
+    await message.answer(f"🚗 <b>Барлық сапарлар</b> ({len(rides)} ta):", parse_mode="HTML")
     for r in rides[:15]:
         status_map = {"active": "🟢", "cancelled": "🔴", "completed": "✅"}
         text = (
@@ -214,32 +214,32 @@ async def admin_all_rides(message: Message):
 
 # ─── BROADCAST ───────────────────────────────────────────────────────────────
 
-@router.message(IsAdmin(), F.text == "📢 Xabar yuborish")
+@router.message(IsAdmin(), F.text == "📢 Хабар жибериў")
 async def broadcast_start(message: Message, state: FSMContext):
     await message.answer(
-        "📢 <b>Ommaviy xabar</b>\n\nBarcha foydalanuvchilarga yuboriladigan xabarni kiriting:",
+        "📢 <b>Ғалаба хабар</b>\n\nБарлық пайдаланыўшыларға жиберилетуғын хабарды киргизиң:",
         parse_mode="HTML",
         reply_markup=cancel_kb()
     )
     await state.set_state(AdminStates.broadcast)
 
 
-@router.message(AdminStates.broadcast, F.text != "❌ Bekor qilish")
+@router.message(AdminStates.broadcast, F.text != "❌ Бийкарлаў")
 async def broadcast_send(message: Message, state: FSMContext, bot: Bot):
     users = await get_all_users()
     sent, failed = 0, 0
-    await message.answer(f"📤 {len(users)} ta foydalanuvchiga yuborilmoqda...")
+    await message.answer(f"📤 {len(users)} пайдаланыўшыларға жиберилмекте...")
     for u in users:
         if u["is_blocked"]:
             continue
         try:
-            await bot.send_message(u["telegram_id"], f"📢 <b>Admin xabari:</b>\n\n{message.text}", parse_mode="HTML")
+            await bot.send_message(u["telegram_id"], f"📢 <b>Админ хабары:</b>\n\n{message.text}", parse_mode="HTML")
             sent += 1
         except:
             failed += 1
     await state.clear()
     await message.answer(
-        f"✅ <b>Yuborildi!</b>\n\n✅ Muvaffaqiyatli: {sent}\n❌ Xato: {failed}",
+        f"✅ <b>Жиберилди!</b>\n\n✅ Табыслы: {sent}\n❌ Қәте: {failed}",
         parse_mode="HTML",
         reply_markup=admin_menu_kb()
     )
@@ -247,7 +247,7 @@ async def broadcast_send(message: Message, state: FSMContext, bot: Bot):
 
 # ─── CANCEL ──────────────────────────────────────────────────────────────────
 
-@router.message(IsAdmin(), F.text == "❌ Bekor qilish")
+@router.message(IsAdmin(), F.text == "❌ Бийкарлаў")
 async def admin_cancel(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer("❌ Bekor qilindi.", reply_markup=admin_menu_kb())
+    await message.answer("❌ Бийкарланды.", reply_markup=admin_menu_kb())
