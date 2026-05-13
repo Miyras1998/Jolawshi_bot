@@ -21,14 +21,14 @@ async def cmd_start(message: Message, state: FSMContext):
     user = await get_user(message.from_user.id)
 
     if user and user["is_blocked"]:
-        await message.answer("🚫 Siz bloklangansiz. Admin bilan bog'laning.")
+        await message.answer("🚫 Сиз блоклангансиз. Админ менен байланысың.")
         return
 
     if not user or not user["phone"]:
         await create_or_update_user(message.from_user.id, message.from_user.full_name)
         await message.answer(
-            f"👋 Assalomu alaykum, <b>{message.from_user.first_name}</b>!\n\n"
-            "🚖 <b>JolawshiBot</b>ga xush kelibsiz!\n"
+            f"👋 Ассалаўма алейкум, <b>{message.from_user.first_name}</b>!\n\n"
+            "🚖 <b>Jolawshi_Bot</b>қа хош келипсиз!\n"
             "Kegeyли — Nukus yo'nalishidagi eng qulay yo'lovchi tizimi.\n\n"
             "📱 Davom etish uchun telefon raqamingizni yuboring:",
             parse_mode="HTML",
