@@ -29,8 +29,8 @@ async def cmd_start(message: Message, state: FSMContext):
         await message.answer(
             f"👋 Ассалаўма алейкум, <b>{message.from_user.first_name}</b>!\n\n"
             "🚖 <b>Jolawshi_Bot</b>қа хош келипсиз!\n"
-            "Бул бот арқалы сиз мәнзилден мәнзилге қолайлы ҳәм тез такси шақырыўыңыз мүмкин!.\n\n"
-            "📱 Даўам етиў ушын телефон номеринизди жибериң:",
+            "Бул бот арқалы сиз мәнзилден мәнзилге қолайлы ҳәм тез такси шақырыўыңыз мүмкин!\n\n"
+            "📱 Даўам етиў ушын телефон номериңизди жиберың:",
             parse_mode="HTML",
             reply_markup=phone_kb()
         )
@@ -80,50 +80,50 @@ async def show_main_menu(message: Message, user):
 @router.message(Command("admin"))
 async def cmd_admin(message: Message):
     if message.from_user.id not in ADMIN_IDS:
-        await message.answer("❌ Sizda admin huquqi yo'q!")
+        await message.answer("❌ Сизде админ ҳуқықы жоқ!")
         return
-    await message.answer("🛡️ <b>Admin panel</b>ga xush kelibsiz!", parse_mode="HTML", reply_markup=admin_menu_kb())
+    await message.answer("🛡️ <b>Админ панел</b>ге хош келипсиз!", parse_mode="HTML", reply_markup=admin_menu_kb())
 
 
-@router.message(F.text == "🔙 Asosiy menyu")
+@router.message(F.text == "🔙 Тийкарғы меню")
 async def back_to_main(message: Message, state: FSMContext):
     await state.clear()
     user = await get_user(message.from_user.id)
     await show_main_menu(message, user)
 
 
-@router.message(F.text == "👤 Profil")
+@router.message(F.text == "👤 Профил")
 async def show_profile(message: Message):
     user = await get_user(message.from_user.id)
     if not user:
-        await message.answer("Profil topilmadi. /start bosing.")
+        await message.answer("Профил табылмады. /start басың.")
         return
 
-    role_map = {"passenger": "Yo'lovchi", "driver": "Haydovchi", "both": "Haydovchi + Yo'lovchi"}
-    role = role_map.get(user["role"], "Yo'lovchi")
+    role_map = {"passenger": "Жолаўшы", "driver": "Такси айдаўшы", "both": "Такси айдаўшы + Жолаўшы"}
+    role = role_map.get(user["role"], "Жолаўшы")
 
     text = (
-        f"👤 <b>Profil</b>\n\n"
-        f"👤 Ism: <b>{user['full_name']}</b>\n"
-        f"📱 Telefon: <b>{user['phone'] or 'Kiritilmagan'}</b>\n"
-        f"🎭 Rol: <b>{role}</b>\n"
-        f"📅 Ro'yxat: <b>{user['created_at'][:10]}</b>"
+        f"👤 <b>Профил</b>\n\n"
+        f"👤 Аты: <b>{user['full_name']}</b>\n"
+        f"📱 Телефон: <b>{user['phone'] or 'Kiritilmagan'}</b>\n"
+        f"🎭 Рол: <b>{role}</b>\n"
+        f"📅 Дизим: <b>{user['created_at'][:10]}</b>"
     )
     await message.answer(text, parse_mode="HTML")
 
 
-@router.message(F.text == "💬 Yordam")
+@router.message(F.text == "💬 Жәрдем")
 async def show_help(message: Message):
     await message.answer(
-        "💬 <b>Yordam</b>\n\n"
-        "🚖 Bu bot Kegeyli — Nukus yo'nalishida haydovchi va yo'lovchilarni bog'laydi.\n\n"
-        "<b>Yo'lovchi uchun:</b>\n"
-        "• 📋 Safarlar ro'yxatidan mos safar toping\n"
-        "• 🚕 Qabul qilish tugmasini bosing\n"
-        "• Haydovchi siz bilan bog'lanadi\n\n"
-        "<b>Haydovchi uchun:</b>\n"
-        "• ➕ Yangi safar qo'shing\n"
-        "• Yo'lovchilar sizga murojaat qiladi\n\n"
-        "📞 Muammo: @taxibot_support",
+        "💬 <b>Жәрдем</b>\n\n"
+        "🚖 Бул бот арқалы сиз мәнзилден мәнзилге қолайлы ҳәм тез такси шақырыўыңыз мүмкин.\n\n"
+        "<b>Жолаўшы ушын:</b>\n"
+        "• 📋 Сапарлар дизиминен сәйкес сапар табың\n"
+        "• 🚕 Қабыллаў түймесин басың\n"
+        "• Такси айдаўшы сиз бенен байланысады\n\n"
+        "<b>Такси айдаўшы ушын:</b>\n"
+        "• ➕ Жаңа сапар қосың\n"
+        "• Жолаўшылар сизге мүрәжат етеди\n\n"
+        "📞 Мүрәжат ушын: @taxibot_support",
         parse_mode="HTML"
     )
