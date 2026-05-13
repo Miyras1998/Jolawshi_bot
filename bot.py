@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def run_api():
     from api import app
     port = int(os.getenv("API_PORT", 8000))
-    logger.info(f"🌐 API server port {port} da ishga tushdi!")
+    logger.info(f"🌐 API сервер порты {port} да иске түсти!")
     app.run(host="0.0.0.0", port=port, use_reloader=False)
 
 
@@ -36,7 +36,7 @@ async def main():
     dp.include_router(driver.router)
     dp.include_router(passenger.router)
 
-    logger.info("🚖 JolawshiBot ishga tushdi!")
+    logger.info("🚖 Jolawshi_Bot иске түсти!")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
