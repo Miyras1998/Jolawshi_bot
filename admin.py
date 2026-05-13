@@ -29,7 +29,7 @@ class AdminStates(StatesGroup):
 
 # ─── ADMIN PANEL ─────────────────────────────────────────────────────────────
 
-@router.message(IsAdmin(), F.text == "📊 Statistika")
+@router.message(IsAdmin(), F.text == "📊 Статистика")
 async def admin_stats(message: Message):
     stats = await get_stats()
     await message.answer(
@@ -44,11 +44,11 @@ async def admin_stats(message: Message):
     )
 
 
-@router.message(IsAdmin(), F.text == "⚙️ Sozlamalar")
+@router.message(IsAdmin(), F.text == "⚙️ Сазламалар")
 async def admin_settings(message: Message):
     s = await get_all_settings()
     text = (
-        f"⚙️ <b>Sozlamalar</b>\n\n"
+        f"⚙️ <b>Сазламалар</b>\n\n"
         f"🕐 Ашылыў: <b>{s.get('rides_open_hour','6'):>02}:{s.get('rides_open_minute','0'):>02}</b>\n"
         f"🔒 Жабылыў: <b>{s.get('rides_close_hour','22'):>02}:{s.get('rides_close_minute','0'):>02}</b>\n"
         f"⏳ Дағаза мүддети: <b>{s.get('ride_expire_hours','24')} soat</b>\n"
@@ -97,7 +97,7 @@ async def set_open_time(message: Message, state: FSMContext):
         await state.clear()
         await message.answer(f"✅ Ашылыў ўақты: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ Надурис формат! Мәселен: 06:00")
+        await message.answer("❌ Надурыс формат! Мәселен: 06:00")
 
 
 @router.message(AdminStates.set_close_time, F.text != "❌ Бийкарлаў")
@@ -111,7 +111,7 @@ async def set_close_time(message: Message, state: FSMContext):
         await state.clear()
         await message.answer(f"✅ Жабылыў ўақты: <b>{h:02d}:{m:02d}</b>", parse_mode="HTML", reply_markup=admin_menu_kb())
     except:
-        await message.answer("❌ Надурис формат! Мәселен: 22:00")
+        await message.answer("❌ Надурыс формат! Мәселен: 22:00")
 
 
 @router.message(AdminStates.set_expire, F.text != "❌ Бийкарлаў")
