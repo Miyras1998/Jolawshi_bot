@@ -29,8 +29,8 @@ async def cmd_start(message: Message, state: FSMContext):
         await message.answer(
             f"👋 Ассалаўма алейкум, <b>{message.from_user.first_name}</b>!\n\n"
             "🚖 <b>Jolawshi_Bot</b>қа хош келипсиз!\n"
-            "Kegeyли — Nukus yo'nalishidagi eng qulay yo'lovchi tizimi.\n\n"
-            "📱 Davom etish uchun telefon raqamingizni yuboring:",
+            "Бул бот арқалы сиз мәнзилден мәнзилге қолайлы ҳәм тез такси шақырыўыңыз мүмкин!.\n\n"
+            "📱 Даўам етиў ушын телефон номеринизди жибериң:",
             parse_mode="HTML",
             reply_markup=phone_kb()
         )
@@ -51,7 +51,7 @@ async def get_phone(message: Message, state: FSMContext):
 
     user = await get_user(message.from_user.id)
     await message.answer(
-        f"✅ Ro'yxatdan o'tdingiz!\n📱 Raqam: <b>{phone}</b>",
+        f"✅ Дизимнен өттиңиз!\n📱 Телефон номер: <b>{phone}</b>",
         parse_mode="HTML"
     )
     await show_main_menu(message, user)
@@ -59,19 +59,19 @@ async def get_phone(message: Message, state: FSMContext):
 
 @router.message(RegStates.waiting_phone)
 async def wrong_phone(message: Message):
-    await message.answer("📱 Iltimos, tugma orqali telefon raqamingizni yuboring!", reply_markup=phone_kb())
+    await message.answer("📱 Илтимас, түйме арқалы телефон номериңизди жиберың!", reply_markup=phone_kb())
 
 
 async def show_main_menu(message: Message, user):
     if message.from_user.id in ADMIN_IDS:
-        role_text = "🛡️ Admin"
+        role_text = "🛡️ Админ"
     elif user and user["role"] in ("driver", "both"):
-        role_text = "🚖 Haydovchi"
+        role_text = "🚖 Такси айдаўшы"
     else:
-        role_text = "🔍 Yo'lovchi"
+        role_text = "🔍 Жолаўшы"
 
     await message.answer(
-        f"🏠 <b>Asosiy menyu</b> | {role_text}\n\nQuyidagi bo'limlardan birini tanlang:",
+        f"🏠 <b>Тийкарғы меню</b> | {role_text}\n\nТөмендеги бөлимлерден бирин таңлаң.:",
         parse_mode="HTML",
         reply_markup=main_menu_kb()
     )
