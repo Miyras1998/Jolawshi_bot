@@ -359,6 +359,31 @@ async def reject_booking(call: CallbackQuery, bot: Bot):
     await call.answer("❌ Бийкар етилди!")
 
 
+@router.message(F.text == "📋 Актив буйыртпалар")
+async def active_orders(message: Message):
+    # Haydovchining barcha safarlarini bazadan olib kelish
+    rides = await get_driver_rides(message.from_user.id)
+    
+    # Faqat statusi 'active' bo'lgan safarlarni saralab olish
+    active_rides = [r for r in rides if r["status"] == "active"]
+    
+    if not active_rides:
+        await message.answer("Сизде ҳәзирше актив буйыртпалар жоқ.")
+        return
+        
+    text = f"📋 <b>Актив буйыртпалар</b> ({len(active_rides)} та):\n\n"
+    for r in active_rides:
+        text += (
+            f"📍 <b>{r['from_city']}</b> → <b>{r['to_city']}</b>\n"
+            f"📅 Ўақты: {r['departure_time']}\n"
+            f"👥 Бос орын: {r['seats']} та\n"
+            f"💰 Бахасы: {r['price']} сум\n"
+            f"──────────────\n"
+        )
+    
+    await message.answer(text, parse_mode="HTML")
+
+
 @router.message(F.text == "📊 Статистика")
 async def driver_stats(message: Message):
     rides = await get_driver_rides(message.from_user.id)
