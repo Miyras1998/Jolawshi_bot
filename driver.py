@@ -194,7 +194,7 @@ async def cancel_confirm(call: CallbackQuery, state: FSMContext):
 
 # ─── MENING SAFARLARIM ────────────────────────────────────────────────────────
 
-@router.message(F.text == "🚗 Мениң сапарларым")
+@router.message(F.text == "🚗 Меның сапарларым")
 async def my_rides(message: Message):
     rides = await get_driver_rides(message.from_user.id)
     if not rides:
