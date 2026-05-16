@@ -87,15 +87,7 @@ def ride_actions_kb(ride_id: int):
     kb.button(text="✏️ Ўақытты өзгертиў", callback_data=f"edit_time:{ride_id}")
     kb.button(text="💰 Баҳаны өзгертиў", callback_data=f"edit_price:{ride_id}")
     kb.button(text="❌ Бийкарлаў", callback_data=f"cancel_ride:{ride_id}")
-    kb.button(text="👥 Бронлар", callback_data=f"ride_bookings:{ride_id}")
-    kb.adjust(2, 1, 1)
-    return kb.as_markup()
-
-
-def booking_kb(ride_id: int):
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🚕 Қабыллаў", callback_data=f"book:{ride_id}")
-    kb.adjust(1)
+    kb.adjust(2, 1)
     return kb.as_markup()
 
 
