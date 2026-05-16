@@ -5,9 +5,11 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database import (get_user, update_user_role, get_setting,
                       create_passenger_request, get_passenger_request,
-                      update_passenger_request_msg, accept_passenger_request_db)
+                      update_passenger_request_msg, accept_passenger_request_db,
+                      add_rating, get_driver_rating)
 from keyboards import (passenger_menu_kb, driver_menu_kb, cancel_kb,
-                       passenger_request_kb, search_confirm_kb, search_edit_kb)
+                       passenger_request_kb, search_confirm_kb, search_edit_kb,
+                       rating_kb)
 
 router = Router()
 
@@ -259,8 +261,20 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
             f"🚖 <b>Такси айдаўшы сизиң буйыртпаңызды қабыллады!</b>\n\n"
             f"📍 {req['from_city']} → {req['to_city']}\n"
             f"📅 {req['dep_date']}\n\n"
+            f"🧑 Айдаўшы: <b>{driver['full_name']}</b>\n"
+            f"📞 Телефон: <b>{driver['phone']}</b>\n\n"
             f"⏳ Жақын арада айдаўшы сиз бенен байланысады.",
             parse_mode="HTML"
+        )
+        # Рейтинг сўрови
+        await bot.send_message(
+            req["passenger_id"],
+            f"⭐ <b>Айдаўшыны баҳалаң!</b>\n\n"
+            f"🧑 {driver['full_name']}\n"
+            f"📍 {req['from_city']} → {req['to_city']}\n\n"
+            f"1 дан 5 ке дейін баҳо бериң:",
+            parse_mode="HTML",
+            reply_markup=rating_kb(request_id, call.from_user.id)
         )
     except Exception:
         pass
@@ -280,6 +294,89 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
         pass
 
     await call.answer("✅ Қабыл етилди! Жолаўшы телефоны жиберилди.", show_alert=True)
+
+
+# ─── РЕЙТИНГ ─────────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("rate:"))
+async def handle_rating(call: CallbackQuery, bot: Bot):
+    parts = call.data.split(":")
+    request_id = int(parts[1])
+    driver_id = int(parts[2])
+    score = int(parts[3])
+
+    saved = await add_rating(driver_id, call.from_user.id, request_id, score)
+    if not saved:
+        await call.answer("⚠️ Сиз аллақачон баҳо бергансиз!", show_alert=True)
+        return
+
+    stars = "⭐" * score
+    await call.message.edit_text(
+        f"✅ <b>Баҳоңыз қабыл етилди!</b>\n\n"
+        f"Сиз айдаўшыға {stars} ({score}/5) баҳо бердиңиз.\n"
+        f"Рахмет!",
+        parse_mode="HTML"
+    )
+
+    # Айдовчига баҳо хабари
+    rating = await get_driver_rating(driver_id)
+    try:
+        await bot.send_message(
+            driver_id,
+            f"⭐ <b>Жаңа баҳо!</b>\n\n"
+            f"Жолаўшы сизге {'⭐' * score} ({score}/5) баҳо берди.\n\n"
+            f"📊 Жалпы рейтинг: <b>{rating['avg']}/5</b> "
+            f"({rating['count']} баҳо)",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+
+    await call.answer()
+
+
+# ─── ТАКСИ САПАРИГА ҚАБЫЛЛАЎ ─────────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("join_ride:"))
+async def join_ride(call: CallbackQuery, bot: Bot):
+    from database import get_ride
+    ride_id = int(call.data.split(":")[1])
+    user = await get_user(call.from_user.id)
+
+    if not user or not user["phone"]:
+        await call.answer("❌ Дәслеп /start арқалы дизимнен өтиң!", show_alert=True)
+        return
+
+    ride = await get_ride(ride_id)
+    if not ride or ride["status"] != "active":
+        await call.answer("❌ Бул сапар жоқ ямаса бийкар етилген!", show_alert=True)
+        return
+
+    if ride["driver_id"] == call.from_user.id:
+        await call.answer("❌ Өз сапарыңызды қабыллай алмайсыз!", show_alert=True)
+        return
+
+    # Айдовчига жолаўшы телефонини юбориш
+    try:
+        await bot.send_message(
+            ride["driver_id"],
+            f"🔔 <b>Жаңа жолаўшы!</b>\n\n"
+            f"👤 Аты: <b>{user['full_name']}</b>\n"
+            f"📞 Телефон: <b>{user['phone']}</b>\n\n"
+            f"📍 {ride['from_city']} → {ride['to_city']}\n"
+            f"📅 {ride['departure_time']}\n\n"
+            f"Жолаўшыға хабарласың!",
+            parse_mode="HTML"
+        )
+    except Exception:
+        await call.answer("❌ Хабар жиберип болмады!", show_alert=True)
+        return
+
+    await call.answer(
+        f"✅ Сизиң телефоныңыз айдаўшыға жиберилди!\n"
+        f"📞 Айдаўшы сиз бенен байланысады.",
+        show_alert=True
+    )
 
 
 # ─── МЕНЫҢ БУЙЫРТПАЛАРЫМ ─────────────────────────────────────────────────────
