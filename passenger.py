@@ -143,7 +143,7 @@ async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
             f"📍 {data['from_city']} → {data['to_city']}\n"
             f"📅 {data['dep_date']}\n"
             f"👥 {data['seats']} адам\n\n"
-            f"⏳ Такси айдаўшылар хабарыңызды көрип, Сиз бенен байланысады!",
+            f"⏳ Такси айдаўшылар хабарыңызды кўрип, Сиз бенен байланысады!",
             parse_mode="HTML"
         )
         # Reply keyboard қайтарыў
@@ -158,7 +158,7 @@ async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
 @router.callback_query(SearchStates.confirm, F.data == "search_confirm:edit")
 async def search_confirm_edit(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
-        "✏️ <b>Қайсы мағлыўматты өзгертпекшисиз?</b>",
+        "✏️ <b>Қайси маълыматты өзгертмекшисиз?</b>",
         parse_mode="HTML",
         reply_markup=search_edit_kb()
     )
@@ -341,27 +341,42 @@ async def book_ride(call: CallbackQuery, bot: Bot):
     )
 
 
-# ─── МЕНЫҢ БРОНЛАРЫМ ─────────────────────────────────────────────────────────
+# ─── МЕНЫҢ БУЙЫРТПАЛАРЫМ ─────────────────────────────────────────────────────
 
-@router.message(F.text == "📜 Меның бронларым")
-async def my_bookings(message: Message):
-    bookings = await get_passenger_bookings(message.from_user.id)
-    if not bookings:
-        await message.answer("📜 Ҳәзирше бронлар жоқ.")
+@router.message(F.text == "📋 Меның буйыртпаларым")
+async def my_orders(message: Message):
+    from database import DB_PATH
+    import aiosqlite
+    from datetime import datetime
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT * FROM passenger_requests
+            WHERE passenger_id = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, (message.from_user.id,)) as cur:
+            requests = await cur.fetchall()
+
+    if not requests:
+        await message.answer(
+            "📋 Ҳәзирше буйыртпаларыңыз жоқ.\n\n"
+            "🔍 Машина излеў арқалы жаңа буйыртпа бериң!"
+        )
         return
-    await message.answer(f"📜 <b>Бронларым</b> ({len(bookings)} та):", parse_mode="HTML")
-    for b in bookings:
-        status_map = {
-            "pending":  "⏳ Күтилмекте",
-            "accepted": "✅ Қабыл етилди",
-            "rejected": "❌ Бийкар етилди"
-        }
+
+    await message.answer(f"📋 <b>Меның буйыртпаларым</b> ({len(requests)} та):", parse_mode="HTML")
+
+    for r in requests:
+        date_str = r["created_at"][:10] if r["created_at"] else "—"
         text = (
-            f"📍 {b['from_city']} → {b['to_city']}\n"
-            f"📅 {b['departure_time']}\n"
-            f"💰 {b['price']:,} сум\n"
-            f"📌 {status_map.get(b['status'], b['status'])}"
-        ).replace(",", " ")
+            f"🆔 #{r['id']}\n"
+            f"📍 <b>{r['from_city']}</b> → <b>{r['to_city']}</b>\n"
+            f"📅 {r['dep_date']}\n"
+            f"👥 {r['seats']} адам\n"
+            f"🗓 {date_str}"
+        )
         await message.answer(text, parse_mode="HTML")
 
 
