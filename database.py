@@ -65,6 +65,20 @@ async def init_db():
         for key, value in defaults:
             await db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS passenger_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                passenger_id INTEGER NOT NULL,
+                from_city TEXT NOT NULL,
+                to_city TEXT NOT NULL,
+                dep_date TEXT NOT NULL,
+                seats INTEGER NOT NULL,
+                channel_msg_id INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (passenger_id) REFERENCES users(telegram_id)
+            )
+        """)
+
         await db.commit()
 
 
@@ -266,3 +280,34 @@ async def get_stats():
             "active_rides": active_rides,
             "total_bookings": total_bookings,
         }
+
+# ─── PASSENGER REQUESTS ──────────────────────────────────────────────────────
+
+async def create_passenger_request(passenger_id, from_city, to_city, dep_date, seats):
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute("""
+            INSERT INTO passenger_requests (passenger_id, from_city, to_city, dep_date, seats)
+            VALUES (?, ?, ?, ?, ?)
+        """, (passenger_id, from_city, to_city, dep_date, seats))
+        await db.commit()
+        return cur.lastrowid
+
+
+async def get_passenger_request(request_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT pr.*, u.phone, u.full_name FROM passenger_requests pr "
+            "JOIN users u ON pr.passenger_id = u.telegram_id WHERE pr.id = ?",
+            (request_id,)
+        ) as cur:
+            return await cur.fetchone()
+
+
+async def update_passenger_request_msg(request_id: int, msg_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE passenger_requests SET channel_msg_id = ? WHERE id = ?",
+            (msg_id, request_id)
+        )
+        await db.commit()
