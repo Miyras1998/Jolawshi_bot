@@ -143,7 +143,7 @@ async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
             f"📍 {data['from_city']} → {data['to_city']}\n"
             f"📅 {data['dep_date']}\n"
             f"👥 {data['seats']} адам\n\n"
-            f"⏳ Такси айдаўшылар хабарыңызды кўрип, Сиз бенен байланысады!",
+            f"⏳ Такси айдаўшылар хабарыңызды көрип, Сиз бенен байланысады!",
             parse_mode="HTML"
         )
         # Reply keyboard қайтарыў
@@ -158,7 +158,7 @@ async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
 @router.callback_query(SearchStates.confirm, F.data == "search_confirm:edit")
 async def search_confirm_edit(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(
-        "✏️ <b>Қайси маълыматты өзгертмекшисиз?</b>",
+        "✏️ <b>Қайсы мағлыўматты өзгертпекшисиз?</b>",
         parse_mode="HTML",
         reply_markup=search_edit_kb()
     )
