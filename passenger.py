@@ -1,87 +1,189 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from database import (get_user, get_active_rides, create_booking, get_booking,
-                      get_ride, get_passenger_bookings, update_user_role, get_setting)
-from keyboards import passenger_menu_kb, driver_menu_kb, booking_kb
+                      get_ride, get_passenger_bookings, update_user_role, get_setting,
+                      create_passenger_request, get_passenger_request,
+                      update_passenger_request_msg)
+from keyboards import passenger_menu_kb, driver_menu_kb, booking_kb, cancel_kb, passenger_request_kb
 
 router = Router()
 
 
-def is_rides_open(open_h, open_m, close_h, close_m) -> bool:
-    from datetime import datetime
-    now = datetime.now()
-    cur = now.hour * 60 + now.minute
-    return (open_h * 60 + open_m) <= cur < (close_h * 60 + close_m)
+class SearchStates(StatesGroup):
+    from_city = State()
+    to_city = State()
+    dep_date = State()
+    seats = State()
 
+
+# ─── МАШИНА ИЗЛЕЎ ────────────────────────────────────────────────────────────
 
 @router.message(F.text == "🔍 Машина излеў")
-async def search_rides(message: Message):
+async def search_start(message: Message, state: FSMContext):
     user = await get_user(message.from_user.id)
     if not user or not user["phone"]:
         await message.answer("❌ Дәслеп /start арқалы дизимнен өтиң!")
         return
     await message.answer("🔍 Жолаўшы режиминдесиз.", reply_markup=passenger_menu_kb())
+    await message.answer(
+        "📍 <b>Қай жерден жол аласыз?</b>\n\nДәслепки қаланы киргизиң:",
+        parse_mode="HTML",
+        reply_markup=cancel_kb()
+    )
+    await state.set_state(SearchStates.from_city)
 
 
-@router.message(F.text == "📋 Сапарлар дизими")
-async def show_rides(message: Message):
-    # Ўақыт тексериў
-    open_h = int(await get_setting("rides_open_hour") or 6)
-    open_m = int(await get_setting("rides_open_minute") or 0)
-    close_h = int(await get_setting("rides_close_hour") or 22)
-    close_m = int(await get_setting("rides_close_minute") or 0)
+@router.message(SearchStates.from_city, F.text != "❌ Бийкарлаў")
+async def search_get_from(message: Message, state: FSMContext):
+    await state.update_data(from_city=message.text.strip())
+    await message.answer("🏁 <b>Қай жерге барасыз?</b>\n\nМәнзил қаланы киргизиң:", parse_mode="HTML")
+    await state.set_state(SearchStates.to_city)
 
-    if not is_rides_open(open_h, open_m, close_h, close_m):
+
+@router.message(SearchStates.to_city, F.text != "❌ Бийкарлаў")
+async def search_get_to(message: Message, state: FSMContext):
+    await state.update_data(to_city=message.text.strip())
+    await message.answer("📅 <b>Қашан жол аласыз?</b>\n\nМәселен: Бүгин 14:00, Ертең 08:00", parse_mode="HTML")
+    await state.set_state(SearchStates.dep_date)
+
+
+@router.message(SearchStates.dep_date, F.text != "❌ Бийкарлаў")
+async def search_get_date(message: Message, state: FSMContext):
+    await state.update_data(dep_date=message.text.strip())
+    await message.answer("👥 <b>Неше адам жол аласыз?</b>\n\nСанды киргизиң (мысалы: 1, 2, 3):", parse_mode="HTML")
+    await state.set_state(SearchStates.seats)
+
+
+@router.message(SearchStates.seats, F.text != "❌ Бийкарлаў")
+async def search_get_seats(message: Message, state: FSMContext, bot: Bot):
+    try:
+        seats = int(message.text.strip())
+        if seats < 1 or seats > 10:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ Надурыс! 1-10 арасында сан киргизиң:")
+        return
+
+    data = await state.get_data()
+    await state.clear()
+
+    user = await get_user(message.from_user.id)
+    channel_id = await get_setting("channel_id")
+
+    # Базаға сақлаў
+    request_id = await create_passenger_request(
+        passenger_id=message.from_user.id,
+        from_city=data["from_city"],
+        to_city=data["to_city"],
+        dep_date=data["dep_date"],
+        seats=seats
+    )
+
+    # Каналда телефон жасырын — тек "Қабыллаў" тугмасы
+    channel_text = (
+        f"🙋 <b>Жолаўшы машина излемекте!</b>\n\n"
+        f"📍 <b>Қайдан:</b> {data['from_city']}\n"
+        f"🏁 <b>Қайда:</b> {data['to_city']}\n"
+        f"📅 <b>Ўақыты:</b> {data['dep_date']}\n"
+        f"👥 <b>Адам саны:</b> {seats} та\n\n"
+        f"👇 Қабыллаў ушын төмендеги түймени басың:"
+    )
+
+    try:
+        msg = await bot.send_message(
+            channel_id,
+            channel_text,
+            parse_mode="HTML",
+            reply_markup=passenger_request_kb(request_id)
+        )
+        await update_passenger_request_msg(request_id, msg.message_id)
         await message.answer(
-            f"🔒 <b>Сапарлар дизими ҳәзир жабық</b>\n\n"
-            f"🟢 Ашылады: <b>{open_h:02d}:{open_m:02d}</b>\n"
-            f"🔴 Жабылады: <b>{close_h:02d}:{close_m:02d}</b>\n\n"
-            "Кейинирек қайта көриң!",
+            f"✅ <b>Сизиң буйыртпаңыз каналга жарияланды!</b>\n\n"
+            f"📍 {data['from_city']} → {data['to_city']}\n"
+            f"📅 {data['dep_date']}\n"
+            f"👥 {seats} адам\n\n"
+            f"⏳ Такси айдаўшылар хабарыңызды кўрип, Сиз бенен байланысады!",
+            parse_mode="HTML",
+            reply_markup=passenger_menu_kb()
+        )
+    except Exception:
+        await message.answer(
+            "⚠️ Каналга жариялаўда қәте кетти. Админ менен байланысың.",
+            reply_markup=passenger_menu_kb()
+        )
+
+
+# ─── АЙДОВЧИ "ҚАБЫЛЛАЎ" БАСҚАНДА ────────────────────────────────────────────
+
+@router.callback_query(F.data.startswith("accept_req:"))
+async def accept_passenger_request(call: CallbackQuery, bot: Bot):
+    request_id = int(call.data.split(":")[1])
+    driver = await get_user(call.from_user.id)
+
+    if not driver:
+        await call.answer("❌ Дәслеп /start арқалы дизимнен өтиң!", show_alert=True)
+        return
+
+    req = await get_passenger_request(request_id)
+    if not req:
+        await call.answer("❌ Бул буйыртпа табылмады!", show_alert=True)
+        return
+
+    if req["passenger_id"] == call.from_user.id:
+        await call.answer("❌ Өз буйыртпаңызды қабыллай алмайсыз!", show_alert=True)
+        return
+
+    # Айдовчига жолаўшы телефонын жибериў
+    try:
+        await bot.send_message(
+            call.from_user.id,
+            f"✅ <b>Жолаўшы буйыртпасын қабыллдыңыз!</b>\n\n"
+            f"📍 {req['from_city']} → {req['to_city']}\n"
+            f"📅 {req['dep_date']}\n"
+            f"👥 {req['seats']} адам\n\n"
+            f"📞 <b>Жолаўшы телефоны: {req['phone']}</b>\n\n"
+            f"Жолаўшыға хабарласың!",
             parse_mode="HTML"
         )
+    except Exception:
+        await call.answer("❌ Хабар жиберип болмады!", show_alert=True)
         return
 
-    rides = await get_active_rides()
-    expire_h = int(await get_setting("ride_expire_hours") or 24)
+    # Жолаўшыға хабар — айдовчи боғланади деп
+    try:
+        await bot.send_message(
+            req["passenger_id"],
+            f"🚖 <b>Такси айдаўшы сизиң буйыртпаңызды қабыллады!</b>\n\n"
+            f"📍 {req['from_city']} → {req['to_city']}\n"
+            f"📅 {req['dep_date']}\n\n"
+            f"⏳ Жақын арада айдаўшы сиз бенен байланысады.",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
 
-    if not rides:
-        await message.answer("😔 Ҳәзирше актив сапарлар жоқ.\n\nКейинирек қайтып келиң!")
-        return
+    # Каналдағы хабарды жаңалаў — тугмани алып ташлаў
+    channel_id = await get_setting("channel_id")
+    try:
+        await bot.edit_message_text(
+            f"✅ <b>Бул буйыртпа қабыл етилди!</b>\n\n"
+            f"📍 {req['from_city']} → {req['to_city']}\n"
+            f"📅 {req['dep_date']}\n"
+            f"👥 {req['seats']} адам",
+            chat_id=channel_id,
+            message_id=req["channel_msg_id"],
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
 
-    await message.answer(f"📋 <b>Актив сапарлар</b> ({len(rides)} ta):", parse_mode="HTML")
+    await call.answer("✅ Қабыл етилди! Жолаўшы телефоны жиберилди.", show_alert=True)
 
-    from datetime import datetime
-    count = 0
-    for r in rides:
-        # Мүддети өткенлерди шығармаў
-        created = datetime.fromisoformat(r["created_at"])
-        age_h = (datetime.now() - created).total_seconds() / 3600
-        if age_h >= expire_h:
-            continue
 
-        remain_h = expire_h - age_h
-        if remain_h < 1:
-            remain = f"{int(remain_h * 60)} daqiqa"
-        else:
-            remain = f"{int(remain_h)} soat"
-
-        text = (
-            f"🆔 #{r['id']}\n"
-            f"📍 <b>{r['from_city']}</b> → <b>{r['to_city']}</b>\n"
-            f"📅 {r['departure_time']}\n"
-            f"👥 {r['seats']} o'rin · 💰 {r['price']:,} сум / адам\n"
-            f"📞 {r['phone']}\n"
-            f"⏳ {remain} қалды"
-        ).replace(",", " ")
-
-        await message.answer(text, parse_mode="HTML", reply_markup=booking_kb(r["id"]))
-        count += 1
-
-    if count == 0:
-        await message.answer("😔 Ҳәзирше актив сапарлар жоқ.")
-
+# ─── БРОН ҚЫЛЫЎ (такси сапарлары ушын) ──────────────────────────────────────
 
 @router.callback_query(F.data.startswith("book:"))
 async def book_ride(call: CallbackQuery, bot: Bot):
@@ -103,10 +205,9 @@ async def book_ride(call: CallbackQuery, bot: Bot):
 
     booking_id = await create_booking(ride_id, call.from_user.id)
     if not booking_id:
-        await call.answer("⚠️ Сиз әллеқашан бул сапарыңызды бәнтлеп қойыпсыз!", show_alert=True)
+        await call.answer("⚠️ Сиз әллеқашан бул сапарды бәнтлеп қойыпсыз!", show_alert=True)
         return
 
-    # Такси айдаўшыға хабар
     driver = await get_user(ride["driver_id"])
     from keyboards import accept_reject_kb
     try:
@@ -120,10 +221,9 @@ async def book_ride(call: CallbackQuery, bot: Bot):
             parse_mode="HTML",
             reply_markup=accept_reject_kb(booking_id)
         )
-    except:
+    except Exception:
         pass
 
-    # Каналда хабарды жаңалаў
     channel_id = await get_setting("channel_id")
     if ride["channel_msg_id"]:
         try:
@@ -135,7 +235,7 @@ async def book_ride(call: CallbackQuery, bot: Bot):
                 message_id=ride["channel_msg_id"],
                 parse_mode="HTML"
             )
-        except:
+        except Exception:
             pass
 
     await call.answer(
@@ -144,14 +244,15 @@ async def book_ride(call: CallbackQuery, bot: Bot):
     )
 
 
+# ─── МЕНЫҢ БРОНЛАРЫМ ─────────────────────────────────────────────────────────
+
 @router.message(F.text == "📜 Меның бронларым")
 async def my_bookings(message: Message):
     bookings = await get_passenger_bookings(message.from_user.id)
     if not bookings:
         await message.answer("📜 Ҳәзирше бронлар жоқ.")
         return
-
-    await message.answer(f"📜 <b>Бронларым</b> ({len(bookings)} ta):", parse_mode="HTML")
+    await message.answer(f"📜 <b>Бронларым</b> ({len(bookings)} та):", parse_mode="HTML")
     for b in bookings:
         status_map = {
             "pending": "⏳ Күтилмекте",
@@ -167,10 +268,20 @@ async def my_bookings(message: Message):
         await message.answer(text, parse_mode="HTML")
 
 
+# ─── ТАКСИ АЙДАЎШЫ БОЛЫЎ ─────────────────────────────────────────────────────
+
 @router.message(F.text == "🚖 Такси айдаўшы болыў")
 async def become_driver_from_passenger(message: Message):
     await update_user_role(message.from_user.id, "both")
     await message.answer(
-        "✅ Енди сиз такси айдаўшы болдыныз.!\n\nТакси айдаўшы менюсына өтиў ушын:",
+        "✅ Енди сиз такси айдаўшы болдыныз!\n\nТакси айдаўшы менюсына өтиў ушын:",
         reply_markup=driver_menu_kb()
     )
+
+
+# ─── БИЙКАРЛАЎ ───────────────────────────────────────────────────────────────
+
+@router.message(F.text == "❌ Бийкарлаў")
+async def cancel_search(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("❌ Бийкарланды.", reply_markup=passenger_menu_kb())
