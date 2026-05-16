@@ -145,6 +145,25 @@ def passenger_request_kb(request_id: int):
     return kb.as_markup()
 
 
+def search_confirm_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Тастыйықлаў", callback_data="search_confirm:yes")
+    kb.button(text="✏️ Өзгертиў", callback_data="search_confirm:edit")
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+def search_edit_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📍 Қайдан", callback_data="search_edit:from_city")
+    kb.button(text="🏁 Қайда", callback_data="search_edit:to_city")
+    kb.button(text="📅 Ўақыты", callback_data="search_edit:dep_date")
+    kb.button(text="👥 Адам саны", callback_data="search_edit:seats")
+    kb.button(text="◀️ Артқа", callback_data="search_edit:back")
+    kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+
 def confirm_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Аўа, тастыйықлаў", callback_data="confirm:yes")
