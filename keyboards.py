@@ -91,6 +91,13 @@ def ride_actions_kb(ride_id: int):
     return kb.as_markup()
 
 
+def ride_join_kb(ride_id: int):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Қабыллаў", callback_data=f"join_ride:{ride_id}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def accept_reject_kb(booking_id: int):
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Қабыллаў", callback_data=f"accept:{booking_id}")
@@ -153,6 +160,15 @@ def search_edit_kb():
     kb.button(text="👥 Адам саны", callback_data="search_edit:seats")
     kb.button(text="◀️ Артқа", callback_data="search_edit:back")
     kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+
+def rating_kb(request_id: int, driver_id: int):
+    kb = InlineKeyboardBuilder()
+    for i in range(1, 6):
+        stars = "⭐" * i
+        kb.button(text=stars, callback_data=f"rate:{request_id}:{driver_id}:{i}")
+    kb.adjust(5)
     return kb.as_markup()
 
 
