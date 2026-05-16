@@ -4,10 +4,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database import (get_user, update_user_role, create_ride, get_driver_rides,
-                      get_ride, cancel_ride, update_ride_channel_msg, get_ride_bookings,
-                      update_booking_status, get_setting)
+                      get_ride, cancel_ride, update_ride_channel_msg, get_setting)
 from keyboards import (driver_menu_kb, passenger_menu_kb, price_kb, seats_kb,
-                       ride_actions_kb, accept_reject_kb, cancel_kb)
+                       ride_actions_kb, cancel_kb)
 
 router = Router()
 
@@ -297,66 +296,6 @@ async def cancel_ride_cb(call: CallbackQuery, bot: Bot):
                 pass
         await call.message.answer("✅ Сапар бийкар етилди.", reply_markup=driver_menu_kb())
     await call.answer()
-
-
-@router.callback_query(F.data.startswith("ride_bookings:"))
-async def show_ride_bookings(call: CallbackQuery):
-    ride_id = int(call.data.split(":")[1])
-    bookings = await get_ride_bookings(ride_id)
-    if not bookings:
-        await call.answer("Ҳәзирше бронлар жоқ.", show_alert=True)
-        return
-    for b in bookings:
-        status_map = {"pending": "⏳ Күтилмекте", "accepted": "✅ Қабыллаў", "rejected": "❌ Бийкарлау"}
-        text = (
-            f"👤 {b['full_name']}\n"
-            f"📱 {b['phone']}\n"
-            f"📌 {status_map.get(b['status'], b['status'])}"
-        )
-        kb = accept_reject_kb(b["id"]) if b["status"] == "pending" else None
-        await call.message.answer(text, reply_markup=kb)
-    await call.answer()
-
-
-@router.callback_query(F.data.startswith("accept:"))
-async def accept_booking(call: CallbackQuery, bot: Bot):
-    booking_id = int(call.data.split(":")[1])
-    booking = await get_booking(booking_id)
-    if not booking:
-        await call.answer("Брон табылмады!", show_alert=True)
-        return
-    await update_booking_status(booking_id, "accepted")
-    ride = await get_ride(booking["ride_id"])
-    driver = await get_user(call.from_user.id)
-    try:
-        await bot.send_message(
-            booking["passenger_id"],
-            f"✅ <b>Броныңыз қабыл етилди!</b>\n\n"
-            f"📍 {ride['from_city']} → {ride['to_city']}\n"
-            f"📅 {ride['departure_time']}\n"
-            f"📞 Такси айдаўшы: <b>{driver['phone']}</b>",
-            parse_mode="HTML"
-        )
-    except:
-        pass
-    await call.message.edit_text(call.message.text + "\n\n✅ Қабыл етилди!")
-    await call.answer("✅ Қабыл етилди!")
-
-
-@router.callback_query(F.data.startswith("reject:"))
-async def reject_booking(call: CallbackQuery, bot: Bot):
-    booking_id = int(call.data.split(":")[1])
-    booking = await get_booking(booking_id)
-    if not booking:
-        await call.answer("Брон табылмады!", show_alert=True)
-        return
-    await update_booking_status(booking_id, "rejected")
-    try:
-        await bot.send_message(booking["passenger_id"], "❌ Тилекке қарсы, бронлаўыңыз бийкар етилди.")
-    except:
-        pass
-    await call.message.edit_text(call.message.text + "\n\n❌ Бийкар етилди!")
-    await call.answer("❌ Бийкар етилди!")
 
 
 @router.message(F.text == "📋 Актив буйыртпалар")
