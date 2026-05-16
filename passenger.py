@@ -3,11 +3,10 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from database import (get_user, get_active_rides, create_booking, get_booking,
-                      get_ride, get_passenger_bookings, update_user_role, get_setting,
+from database import (get_user, update_user_role, get_setting,
                       create_passenger_request, get_passenger_request,
                       update_passenger_request_msg)
-from keyboards import (passenger_menu_kb, driver_menu_kb, booking_kb, cancel_kb,
+from keyboards import (passenger_menu_kb, driver_menu_kb, cancel_kb,
                        passenger_request_kb, search_confirm_kb, search_edit_kb)
 
 router = Router()
@@ -278,67 +277,6 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
         pass
 
     await call.answer("✅ Қабыл етилди! Жолаўшы телефоны жиберилди.", show_alert=True)
-
-
-# ─── БРОН ҚЫЛЫЎ ──────────────────────────────────────────────────────────────
-
-@router.callback_query(F.data.startswith("book:"))
-async def book_ride(call: CallbackQuery, bot: Bot):
-    ride_id = int(call.data.split(":")[1])
-    user = await get_user(call.from_user.id)
-
-    if not user or not user["phone"]:
-        await call.answer("❌ Дәслеп /start арқалы дизимнен өтиң!", show_alert=True)
-        return
-
-    ride = await get_ride(ride_id)
-    if not ride or ride["status"] != "active":
-        await call.answer("❌ Бул сапар жоқ ямаса бийкар етилген!", show_alert=True)
-        return
-
-    if ride["driver_id"] == call.from_user.id:
-        await call.answer("❌ Өз сапарыңызды бронлай алмайсыз!", show_alert=True)
-        return
-
-    booking_id = await create_booking(ride_id, call.from_user.id)
-    if not booking_id:
-        await call.answer("⚠️ Сиз әллеқашан бул сапарды бәнтлеп қойыпсыз!", show_alert=True)
-        return
-
-    driver = await get_user(ride["driver_id"])
-    from keyboards import accept_reject_kb
-    try:
-        await bot.send_message(
-            ride["driver_id"],
-            f"🔔 <b>Жаңа брон!</b>\n\n"
-            f"👤 Жолаўшы: <b>{user['full_name']}</b>\n"
-            f"📱 Телефон: <b>{user['phone']}</b>\n"
-            f"📍 {ride['from_city']} → {ride['to_city']}\n"
-            f"📅 {ride['departure_time']}",
-            parse_mode="HTML",
-            reply_markup=accept_reject_kb(booking_id)
-        )
-    except Exception:
-        pass
-
-    channel_id = await get_setting("channel_id")
-    if ride["channel_msg_id"]:
-        try:
-            await bot.edit_message_text(
-                f"✅ <b>Бул сапар қабыл етилди!</b>\n\n"
-                f"📍 {ride['from_city']} → {ride['to_city']}\n"
-                f"📅 {ride['departure_time']}",
-                chat_id=channel_id,
-                message_id=ride["channel_msg_id"],
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-
-    await call.answer(
-        f"✅ Буйыртпа жиберилди! Такси айдаўшы {driver['phone'] if driver else ''} Сиз бенен байланысады.",
-        show_alert=True
-    )
 
 
 # ─── МЕНЫҢ БУЙЫРТПАЛАРЫМ ─────────────────────────────────────────────────────
