@@ -82,6 +82,19 @@ async def init_db():
             )
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                driver_id INTEGER NOT NULL,
+                passenger_id INTEGER NOT NULL,
+                request_id INTEGER NOT NULL,
+                score INTEGER NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (driver_id) REFERENCES users(telegram_id),
+                FOREIGN KEY (passenger_id) REFERENCES users(telegram_id)
+            )
+        """)
+
         # Мавжуд базага янги устунлар қўшиш (миграция)
         for col, definition in [
             ("driver_name", "TEXT"),
@@ -334,3 +347,34 @@ async def accept_passenger_request_db(request_id: int, driver_name: str, driver_
             (driver_name, driver_phone, request_id)
         )
         await db.commit()
+
+
+# ─── RATINGS ─────────────────────────────────────────────────────────────────
+
+async def add_rating(driver_id: int, passenger_id: int, request_id: int, score: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Бир буйыртма учун фақат бир баҳо
+        existing = await db.execute(
+            "SELECT id FROM ratings WHERE request_id = ? AND passenger_id = ?",
+            (request_id, passenger_id)
+        )
+        if await existing.fetchone():
+            return False
+        await db.execute(
+            "INSERT INTO ratings (driver_id, passenger_id, request_id, score) VALUES (?, ?, ?, ?)",
+            (driver_id, passenger_id, request_id, score)
+        )
+        await db.commit()
+        return True
+
+
+async def get_driver_rating(driver_id: int) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) as cnt, AVG(score) as avg FROM ratings WHERE driver_id = ?",
+            (driver_id,)
+        ) as cur:
+            row = await cur.fetchone()
+            count = row[0] if row else 0
+            avg = round(row[1], 1) if row and row[1] else 0.0
+            return {"count": count, "avg": avg}
