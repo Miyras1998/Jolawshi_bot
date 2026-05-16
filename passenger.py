@@ -307,13 +307,13 @@ async def my_orders(message: Message):
     await message.answer(f"📋 <b>Меның буйыртпаларым</b> ({len(requests)} та):", parse_mode="HTML")
 
     for r in requests:
-        date_str = r["created_at"][:10] if r["created_at"] else "—"
+        created_str = r["created_at"][:16].replace("T", " ") if r["created_at"] else "—"
         text = (
             f"🆔 #{r['id']}\n"
             f"📍 <b>{r['from_city']}</b> → <b>{r['to_city']}</b>\n"
-            f"📅 {r['dep_date']}\n"
+            f"📅 Жол ўақыты: <b>{r['dep_date']}</b>\n"
             f"👥 {r['seats']} адам\n"
-            f"🗓 {date_str}"
+            f"🗓 Берилди: {created_str}"
         )
         await message.answer(text, parse_mode="HTML")
 
