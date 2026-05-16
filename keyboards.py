@@ -9,7 +9,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 def main_menu_kb():
     kb = ReplyKeyboardBuilder()
-    kb.button(text="🔍 Машина излеў")
+    kb.button(text="🔍 Жолаўшы режими")
     kb.button(text="🚖 Такси айдаўшы сыпатында кириў")
     kb.adjust(1)
     return kb.as_markup(resize_keyboard=True)
