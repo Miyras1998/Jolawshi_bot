@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from database import (get_user, update_user_role, get_setting,
                       create_passenger_request, get_passenger_request,
-                      update_passenger_request_msg)
+                      update_passenger_request_msg, accept_passenger_request_db)
 from keyboards import (passenger_menu_kb, driver_menu_kb, cancel_kb,
                        passenger_request_kb, search_confirm_kb, search_edit_kb)
 
@@ -250,6 +250,9 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
         await call.answer("❌ Хабар жиберип болмады!", show_alert=True)
         return
 
+    # Айдовчи маълумотини базага сақлаш
+    await accept_passenger_request_db(request_id, driver["full_name"], driver["phone"])
+
     try:
         await bot.send_message(
             req["passenger_id"],
@@ -308,12 +311,19 @@ async def my_orders(message: Message):
 
     for r in requests:
         created_str = r["created_at"][:16].replace("T", " ") if r["created_at"] else "—"
+
+        if r["accepted"] and r["driver_name"]:
+            status = f"✅ Қабыл етилди\n🧑 {r['driver_name']}\n📞 {r['driver_phone']}"
+        else:
+            status = "⏳ Күтилмекте"
+
         text = (
             f"🆔 #{r['id']}\n"
             f"📍 <b>{r['from_city']}</b> → <b>{r['to_city']}</b>\n"
             f"📅 Жол ўақыты: <b>{r['dep_date']}</b>\n"
             f"👥 {r['seats']} адам\n"
-            f"🗓 Берилди: {created_str}"
+            f"🗓 Берилди: {created_str}\n"
+            f"📌 {status}"
         )
         await message.answer(text, parse_mode="HTML")
 
