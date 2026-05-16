@@ -17,7 +17,7 @@ def main_menu_kb():
 
 def passenger_menu_kb():
     kb = ReplyKeyboardBuilder()
-    kb.button(text="📋 Сапарлар дизими")
+    kb.button(text="🔍 Машина излеў")
     kb.button(text="🚖 Такси айдаўшы болыў")
     kb.button(text="📜 Меның бронларым")
     kb.button(text="👤 Профил")
@@ -136,6 +136,13 @@ def cancel_kb():
     kb = ReplyKeyboardBuilder()
     kb.button(text="❌ Бийкарлаў")
     return kb.as_markup(resize_keyboard=True)
+
+
+def passenger_request_kb(request_id: int):
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Қабыллаў", callback_data=f"accept_req:{request_id}")
+    kb.adjust(1)
+    return kb.as_markup()
 
 
 def confirm_kb():
