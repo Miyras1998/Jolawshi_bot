@@ -146,8 +146,11 @@ async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
             f"⏳ Такси айдаўшылар хабарыңызды кўрип, Сиз бенен байланысады!",
             parse_mode="HTML"
         )
+        # Reply keyboard қайтарыў
+        await call.message.answer("🏠 Тийкарғы меню:", reply_markup=passenger_menu_kb())
     except Exception:
-        await call.message.answer("⚠️ Каналга жариялаўда қәте кетти. Админ менен байланысың.")
+        await call.message.answer("⚠️ Каналга жариялаўда қәте кетти. Админ менен байланысың.",
+                                  reply_markup=passenger_menu_kb())
 
     await call.answer()
 
