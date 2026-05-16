@@ -74,10 +74,24 @@ async def init_db():
                 dep_date TEXT NOT NULL,
                 seats INTEGER NOT NULL,
                 channel_msg_id INTEGER,
+                driver_name TEXT,
+                driver_phone TEXT,
+                accepted INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (passenger_id) REFERENCES users(telegram_id)
             )
         """)
+
+        # Мавжуд базага янги устунлар қўшиш (миграция)
+        for col, definition in [
+            ("driver_name", "TEXT"),
+            ("driver_phone", "TEXT"),
+            ("accepted", "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE passenger_requests ADD COLUMN {col} {definition}")
+            except Exception:
+                pass
 
         await db.commit()
 
@@ -309,5 +323,14 @@ async def update_passenger_request_msg(request_id: int, msg_id: int):
         await db.execute(
             "UPDATE passenger_requests SET channel_msg_id = ? WHERE id = ?",
             (msg_id, request_id)
+        )
+        await db.commit()
+
+
+async def accept_passenger_request_db(request_id: int, driver_name: str, driver_phone: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE passenger_requests SET accepted = 1, driver_name = ?, driver_phone = ? WHERE id = ?",
+            (driver_name, driver_phone, request_id)
         )
         await db.commit()
