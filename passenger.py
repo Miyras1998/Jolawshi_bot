@@ -323,7 +323,7 @@ async def handle_rating(call: CallbackQuery, bot: Bot):
     try:
         await bot.send_message(
             driver_id,
-            f"⭐ <b>Жаңа баҳо!</b>\n\n"
+            f"⭐ <b>Жаңа баҳа!</b>\n\n"
             f"Жолаўшы сизге {'⭐' * score} ({score}/5) баҳа берди.\n\n"
             f"📊 Жалпы рейтинг: <b>{rating['avg']}/5</b> "
             f"({rating['count']} баҳо)",
