@@ -19,7 +19,19 @@ class SearchStates(StatesGroup):
     seats = State()
 
 
-# ─── МАШИНА ИЗЛЕЎ ────────────────────────────────────────────────────────────
+# ─── ТИЙКАРҒЫ МЕНЮДАН: жолаўшы менюсын ашыў ─────────────────────────────────
+
+@router.message(F.text == "🔍 Жолаўшы режими")
+async def open_passenger_menu(message: Message, state: FSMContext):
+    user = await get_user(message.from_user.id)
+    if not user or not user["phone"]:
+        await message.answer("❌ Дәслеп /start арқалы дизимнен өтиң!")
+        return
+    await state.clear()
+    await message.answer("🔍 Жолаўшы режиминдесиз.", reply_markup=passenger_menu_kb())
+
+
+# ─── ЖОЛАЎШЫ МЕНЮСЫНАН: машина излеў ────────────────────────────────────────
 
 @router.message(F.text == "🔍 Машина излеў")
 async def search_start(message: Message, state: FSMContext):
@@ -27,7 +39,6 @@ async def search_start(message: Message, state: FSMContext):
     if not user or not user["phone"]:
         await message.answer("❌ Дәслеп /start арқалы дизимнен өтиң!")
         return
-    await message.answer("🔍 Жолаўшы режиминдесиз.", reply_markup=passenger_menu_kb())
     await message.answer(
         "📍 <b>Қай жерден жол аласыз?</b>\n\nДәслепки қаланы киргизиң:",
         parse_mode="HTML",
