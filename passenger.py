@@ -307,13 +307,13 @@ async def handle_rating(call: CallbackQuery, bot: Bot):
 
     saved = await add_rating(driver_id, call.from_user.id, request_id, score)
     if not saved:
-        await call.answer("⚠️ Сиз аллақачон баҳо бергансиз!", show_alert=True)
+        await call.answer("⚠️ Сиз әллеқашан баҳа бергенсиз!", show_alert=True)
         return
 
     stars = "⭐" * score
     await call.message.edit_text(
-        f"✅ <b>Баҳоңыз қабыл етилди!</b>\n\n"
-        f"Сиз айдаўшыға {stars} ({score}/5) баҳо бердиңиз.\n"
+        f"✅ <b>Баҳаңыз қабыл етилди!</b>\n\n"
+        f"Сиз айдаўшыға {stars} ({score}/5) баҳа бердиңиз.\n"
         f"Рахмет!",
         parse_mode="HTML"
     )
@@ -324,7 +324,7 @@ async def handle_rating(call: CallbackQuery, bot: Bot):
         await bot.send_message(
             driver_id,
             f"⭐ <b>Жаңа баҳо!</b>\n\n"
-            f"Жолаўшы сизге {'⭐' * score} ({score}/5) баҳо берди.\n\n"
+            f"Жолаўшы сизге {'⭐' * score} ({score}/5) баҳа берди.\n\n"
             f"📊 Жалпы рейтинг: <b>{rating['avg']}/5</b> "
             f"({rating['count']} баҳо)",
             parse_mode="HTML"
