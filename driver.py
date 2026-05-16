@@ -157,22 +157,33 @@ async def confirm_ride(call: CallbackQuery, state: FSMContext, bot: Bot):
         price=data["price"]
     )
 
+    from database import get_driver_rating
+    rating = await get_driver_rating(call.from_user.id)
+    if rating["count"] > 0:
+        stars = "⭐" * round(rating["avg"])
+        rating_str = f"{stars} ({rating['count']} баҳо)"
+    else:
+        rating_str = "Ҳәзирше баҳо жоқ"
+
     channel_id = await get_setting("channel_id")
     channel_text = (
         f"🚖 <b>Жаңа сапар!</b>\n\n"
-        f"📍 {data['from_city']} → {data['to_city']}\n"
-        f"📅 Ўақыт: <b>{data['dep_time']}</b>\n"
-        f"👥 Орынлар: <b>{data['seats']} ta</b>\n"
-        f"💰 Баҳасы: <b>{data['price']:,} so'm</b> / kishi\n"
-        f"📞 Такси айдаўшы: <b>{user['phone']}</b>\n\n"
-        f"🆔 Сапар ID: #{ride_id}"
+        f"📍 <b>Қайдан:</b> {data['from_city']}\n"
+        f"🏁 <b>Қайда:</b> {data['to_city']}\n"
+        f"📅 <b>Ўақыт:</b> {data['dep_time']}\n"
+        f"👥 <b>Орынлар:</b> {data['seats']} та\n"
+        f"💰 <b>Баҳасы:</b> {data['price']:,} сум / адам\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🧑 <b>Айдаўшы:</b> {user['full_name']}\n"
+        f"📞 <b>Телефон:</b> {user['phone']}\n"
+        f"⭐ <b>Рейтинг:</b> {rating_str}"
     ).replace(",", " ")
 
-    from keyboards import booking_kb
     try:
-        msg = await bot.send_message(channel_id, channel_text, parse_mode="HTML", reply_markup=booking_kb(ride_id))
+        from keyboards import ride_join_kb
+        msg = await bot.send_message(channel_id, channel_text, parse_mode="HTML", reply_markup=ride_join_kb(ride_id))
         await update_ride_channel_msg(ride_id, msg.message_id)
-    except Exception as e:
+    except Exception:
         pass
 
     await call.message.answer(
