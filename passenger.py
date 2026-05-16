@@ -7,19 +7,33 @@ from database import (get_user, get_active_rides, create_booking, get_booking,
                       get_ride, get_passenger_bookings, update_user_role, get_setting,
                       create_passenger_request, get_passenger_request,
                       update_passenger_request_msg)
-from keyboards import passenger_menu_kb, driver_menu_kb, booking_kb, cancel_kb, passenger_request_kb
+from keyboards import (passenger_menu_kb, driver_menu_kb, booking_kb, cancel_kb,
+                       passenger_request_kb, search_confirm_kb, search_edit_kb)
 
 router = Router()
 
 
 class SearchStates(StatesGroup):
-    from_city = State()
-    to_city = State()
-    dep_date = State()
-    seats = State()
+    from_city   = State()
+    to_city     = State()
+    dep_date    = State()
+    seats       = State()
+    confirm     = State()   # тасдиқлаш экрани
+    edit_field  = State()   # бир майдонни тахрирлаш
 
 
-# ─── ТИЙКАРҒЫ МЕНЮДАН: жолаўшы менюсын ашыў ─────────────────────────────────
+def _summary(data: dict) -> str:
+    return (
+        f"📋 <b>Сизиң буйыртпаңыз:</b>\n\n"
+        f"📍 <b>Қайдан:</b> {data.get('from_city', '—')}\n"
+        f"🏁 <b>Қайда:</b> {data.get('to_city', '—')}\n"
+        f"📅 <b>Ўақыты:</b> {data.get('dep_date', '—')}\n"
+        f"👥 <b>Адам саны:</b> {data.get('seats', '—')} та\n\n"
+        f"Маълыматлар дурыс па?"
+    )
+
+
+# ─── ТИЙКАРҒЫ МЕНЮДАН ────────────────────────────────────────────────────────
 
 @router.message(F.text == "🔍 Жолаўшы режими")
 async def open_passenger_menu(message: Message, state: FSMContext):
@@ -31,7 +45,7 @@ async def open_passenger_menu(message: Message, state: FSMContext):
     await message.answer("🔍 Жолаўшы режиминдесиз.", reply_markup=passenger_menu_kb())
 
 
-# ─── ЖОЛАЎШЫ МЕНЮСЫНАН: машина излеў ────────────────────────────────────────
+# ─── МАЪЛУМОТ ЖЫЙНАЎ ─────────────────────────────────────────────────────────
 
 @router.message(F.text == "🔍 Машина излеў")
 async def search_start(message: Message, state: FSMContext):
@@ -39,10 +53,10 @@ async def search_start(message: Message, state: FSMContext):
     if not user or not user["phone"]:
         await message.answer("❌ Дәслеп /start арқалы дизимнен өтиң!")
         return
+    await state.clear()
     await message.answer(
         "📍 <b>Қай жерден жол аласыз?</b>\n\nДәслепки қаланы киргизиң:",
-        parse_mode="HTML",
-        reply_markup=cancel_kb()
+        parse_mode="HTML", reply_markup=cancel_kb()
     )
     await state.set_state(SearchStates.from_city)
 
@@ -69,7 +83,7 @@ async def search_get_date(message: Message, state: FSMContext):
 
 
 @router.message(SearchStates.seats, F.text != "❌ Бийкарлаў")
-async def search_get_seats(message: Message, state: FSMContext, bot: Bot):
+async def search_get_seats(message: Message, state: FSMContext):
     try:
         seats = int(message.text.strip())
         if seats < 1 or seats > 10:
@@ -78,53 +92,125 @@ async def search_get_seats(message: Message, state: FSMContext, bot: Bot):
         await message.answer("❌ Надурыс! 1-10 арасында сан киргизиң:")
         return
 
+    await state.update_data(seats=seats)
+    data = await state.get_data()
+
+    # Тасдиқлаш экрани
+    await message.answer(
+        _summary(data),
+        parse_mode="HTML",
+        reply_markup=search_confirm_kb()
+    )
+    await state.set_state(SearchStates.confirm)
+
+
+# ─── ТАСДИҚЛАШ / ӨЗГЕРТИЎ ────────────────────────────────────────────────────
+
+@router.callback_query(SearchStates.confirm, F.data == "search_confirm:yes")
+async def search_confirm_yes(call: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
     await state.clear()
 
-    user = await get_user(message.from_user.id)
+    user = await get_user(call.from_user.id)
     channel_id = await get_setting("channel_id")
 
-    # Базаға сақлаў
     request_id = await create_passenger_request(
-        passenger_id=message.from_user.id,
+        passenger_id=call.from_user.id,
         from_city=data["from_city"],
         to_city=data["to_city"],
         dep_date=data["dep_date"],
-        seats=seats
+        seats=data["seats"]
     )
 
-    # Каналда телефон жасырын — тек "Қабыллаў" тугмасы
     channel_text = (
         f"🙋 <b>Жолаўшы машина излемекте!</b>\n\n"
         f"📍 <b>Қайдан:</b> {data['from_city']}\n"
         f"🏁 <b>Қайда:</b> {data['to_city']}\n"
         f"📅 <b>Ўақыты:</b> {data['dep_date']}\n"
-        f"👥 <b>Адам саны:</b> {seats} та\n\n"
+        f"👥 <b>Адам саны:</b> {data['seats']} та\n\n"
         f"👇 Қабыллаў ушын төмендеги түймени басың:"
     )
 
     try:
         msg = await bot.send_message(
-            channel_id,
-            channel_text,
+            channel_id, channel_text,
             parse_mode="HTML",
             reply_markup=passenger_request_kb(request_id)
         )
         await update_passenger_request_msg(request_id, msg.message_id)
-        await message.answer(
-            f"✅ <b>Сизиң буйыртпаңыз каналга жарияланды!</b>\n\n"
+        await call.message.edit_text(
+            f"✅ <b>Буйыртпа каналга жарияланды!</b>\n\n"
             f"📍 {data['from_city']} → {data['to_city']}\n"
             f"📅 {data['dep_date']}\n"
-            f"👥 {seats} адам\n\n"
+            f"👥 {data['seats']} адам\n\n"
             f"⏳ Такси айдаўшылар хабарыңызды кўрип, Сиз бенен байланысады!",
-            parse_mode="HTML",
-            reply_markup=passenger_menu_kb()
+            parse_mode="HTML"
         )
     except Exception:
-        await message.answer(
-            "⚠️ Каналга жариялаўда қәте кетти. Админ менен байланысың.",
-            reply_markup=passenger_menu_kb()
+        await call.message.answer("⚠️ Каналга жариялаўда қәте кетти. Админ менен байланысың.")
+
+    await call.answer()
+
+
+@router.callback_query(SearchStates.confirm, F.data == "search_confirm:edit")
+async def search_confirm_edit(call: CallbackQuery, state: FSMContext):
+    await call.message.edit_text(
+        "✏️ <b>Қайси маълыматты өзгертмекшисиз?</b>",
+        parse_mode="HTML",
+        reply_markup=search_edit_kb()
+    )
+    await call.answer()
+
+
+@router.callback_query(F.data.startswith("search_edit:"))
+async def search_edit_field(call: CallbackQuery, state: FSMContext):
+    field = call.data.split(":")[1]
+
+    if field == "back":
+        data = await state.get_data()
+        await call.message.edit_text(
+            _summary(data), parse_mode="HTML", reply_markup=search_confirm_kb()
         )
+        await state.set_state(SearchStates.confirm)
+        await call.answer()
+        return
+
+    prompts = {
+        "from_city": "📍 Жаңа <b>қайдан</b> қаланы киргизиң:",
+        "to_city":   "🏁 Жаңа <b>қайда</b> қаланы киргизиң:",
+        "dep_date":  "📅 Жаңа <b>ўақытты</b> киргизиң (мысалы: Бүгин 14:00):",
+        "seats":     "👥 Жаңа <b>адам санын</b> киргизиң (1-10):",
+    }
+    await state.update_data(editing_field=field)
+    await call.message.answer(prompts[field], parse_mode="HTML", reply_markup=cancel_kb())
+    await state.set_state(SearchStates.edit_field)
+    await call.answer()
+
+
+@router.message(SearchStates.edit_field, F.text != "❌ Бийкарлаў")
+async def search_save_edit(message: Message, state: FSMContext):
+    data = await state.get_data()
+    field = data.get("editing_field")
+
+    if field == "seats":
+        try:
+            val = int(message.text.strip())
+            if val < 1 or val > 10:
+                raise ValueError
+            await state.update_data(seats=val)
+        except ValueError:
+            await message.answer("❌ Надурыс! 1-10 арасында сан киргизиң:")
+            return
+    else:
+        await state.update_data(**{field: message.text.strip()})
+
+    data = await state.get_data()
+    await message.answer(
+        _summary(data),
+        parse_mode="HTML",
+        reply_markup=search_confirm_kb()
+    )
+    await state.set_state(SearchStates.confirm)
 
 
 # ─── АЙДОВЧИ "ҚАБЫЛЛАЎ" БАСҚАНДА ────────────────────────────────────────────
@@ -147,7 +233,6 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
         await call.answer("❌ Өз буйыртпаңызды қабыллай алмайсыз!", show_alert=True)
         return
 
-    # Айдовчига жолаўшы телефонын жибериў
     try:
         await bot.send_message(
             call.from_user.id,
@@ -163,7 +248,6 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
         await call.answer("❌ Хабар жиберип болмады!", show_alert=True)
         return
 
-    # Жолаўшыға хабар — айдовчи боғланади деп
     try:
         await bot.send_message(
             req["passenger_id"],
@@ -176,7 +260,6 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
     except Exception:
         pass
 
-    # Каналдағы хабарды жаңалаў — тугмани алып ташлаў
     channel_id = await get_setting("channel_id")
     try:
         await bot.edit_message_text(
@@ -194,7 +277,7 @@ async def accept_passenger_request(call: CallbackQuery, bot: Bot):
     await call.answer("✅ Қабыл етилди! Жолаўшы телефоны жиберилди.", show_alert=True)
 
 
-# ─── БРОН ҚЫЛЫЎ (такси сапарлары ушын) ──────────────────────────────────────
+# ─── БРОН ҚЫЛЫЎ ──────────────────────────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("book:"))
 async def book_ride(call: CallbackQuery, bot: Bot):
@@ -266,7 +349,7 @@ async def my_bookings(message: Message):
     await message.answer(f"📜 <b>Бронларым</b> ({len(bookings)} та):", parse_mode="HTML")
     for b in bookings:
         status_map = {
-            "pending": "⏳ Күтилмекте",
+            "pending":  "⏳ Күтилмекте",
             "accepted": "✅ Қабыл етилди",
             "rejected": "❌ Бийкар етилди"
         }
