@@ -19,7 +19,7 @@ def passenger_menu_kb():
     kb = ReplyKeyboardBuilder()
     kb.button(text="🔍 Машина излеў")
     kb.button(text="🚖 Такси айдаўшы болыў")
-    kb.button(text="📜 Меның бронларым")
+    kb.button(text="📋 Меның буйыртпаларым")
     kb.button(text="👤 Профил")
     kb.button(text="💬 Жәрдем")
     kb.adjust(2, 2, 1)
